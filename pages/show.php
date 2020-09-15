@@ -9,13 +9,39 @@
 // On appelle la liste des tâches
 $data = require_once "data.php";
 
+/*
+**  $Resultat etant définit dans index.php
+**  Le matcher renvoie toujours un tableau
+**  associatif.
+**  On ne va plus chercher nos parametres en GET
+*/
+$id = $currentRoute['id'];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//=============================CODE INITIAL==========================
 // Par défaut, on imagine qu'aucun id n'a été précisé
-$id = null;
+//$id = null;
 
 // Si un id est précisé en GET, on le prend
-if (isset($_GET['id'])) {
-    $id = $_GET['id'];
-}
+//if (isset($_GET['id'])) {
+//    $id = $_GET['id'];
+//}
 
 // Si aucun id n'est passé ou que l'id n'existe pas dans la liste des tâches, on arrête tout !
 if (!$id || !array_key_exists($id, $data)) {
@@ -24,7 +50,7 @@ if (!$id || !array_key_exists($id, $data)) {
 
 // Si tout va bien, on récupère la tâche correspondante et on affiche
 $task = $data[$id];
-
+//
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,7 +68,7 @@ $task = $data[$id];
     <p>
         La tâche est <strong><?= $task['completed'] ? "complétée" : "encore à faire" ?> !</strong>
     </p>
-    <a href="index.php">Retour à la liste</a> ou <a href="index.php?page=create">Créer une autre tâche</a>
+    <a href="<?= $generator->generate('list'); ?>">Retour à la liste</a> ou <a href="<?= $generator->generate('create') ?>">Créer une autre tâche</a>
 </body>
 
 </html>

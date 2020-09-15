@@ -33,13 +33,45 @@ use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use Symfony\Component\Routing\Generator\UrlGenerator;
 
 require __DIR__ . '/vendor/autoload.php';
 
 $listRoute      = new Route('/');
-$createRoute    = new Route('/create');
-$showRoute      = new Route('/show');
-
+$createRoute    = new Route('/create', [], [], [], 'localhost', ['http'], ['POST', 'GET']);
+//l'identifiant est de base a 100
+//['id'] => 100     <====> {id?100}
+//['id'] => '\d+'   <====> ['\d+']
+$showRoute      = new Route('/show/{id?100}', [], [
+    //Pour la route show on  veut un numerique
+    // 1 ou plus
+    'id' => '\d+'
+]);
+/*
+**  On donne un parametre name par defaut
+**  Ex : si on tappe /hello     => Hello Wrld
+**       si on tappe /hello/Jog => Hello Jog
+**
+**  Note : On peut ajouter des parametres
+**  ex 'reponse' => 42 => on aura un champ
+**  reponse dans notre tableau avec 42.
+**  Voir dd(current_route)
+**
+**  A premiere vu ca ne sert pas trop mais au final
+**  on pourra passer des parametres qui n'appartiennent
+**  pas a l'URL.
+**  Puis plus tard on passera notre controller
+**
+**  On passe en 3 eme arg des requirments
+*/
+$helloRoute     = new Route('/hello/{name}',
+                ['name' => 'World', 'toto' => 42],
+                /*  Requirement ici on demande via une
+                **  regex que name est 3 characteres
+                **  Ce sont des contraintes de route
+                */
+                ['name' => '.{3}']
+            );
 /*
 **  Comparaison :
 **  /create         VS      /index.php?page=create
@@ -54,13 +86,39 @@ $collection = new RouteCollection();
 $collection->add('list', $listRoute);
 $collection->add('create', $createRoute);
 $collection->add('show', $showRoute);
-
+$collection->add('hello', $helloRoute);
 
 /*
 **  On crée un matcher
 */
-$matcher = new UrlMatcher($collection, new RequestContext());
+dump($_SERVER);
+/*
+**  Le requestContext recupere des infos sur la requete actuelle
+**  Normalmeent il prend une url de base (il peut se debrouiller seul)
+**  Sauf que par defaut il prend GET et ca peut poser des pb pour les
+**  formulaires par exemple.
+**
+**  Sur /create
+**      Si on fait un dump('$_SERVER'), on trouve la REQUEST_METHOD =GET
+**      Si on poste le form on obtient ('$_SERVER') = POST
+**
+**  On peut doinc passer $_SERVER a requestContext
+**  
+*/
+$matcher    = new UrlMatcher($collection, new RequestContext('', $_SERVER['REQUEST_METHOD']));
 
+/*
+**  On crée un UrlGenerator
+**  Cela va nous créer dynamiquement une url avec potentiellement un parametre
+*/
+
+$generator = new UrlGenerator($collection, new RequestContext('', $_SERVER['REQUEST_METHOD']));
+//dd($generator->generate('show', ['id' => 100]));
+
+//  Le matcher aura touours le nom de la route et potentiellement
+//  des parametres de route.
+//  $resultat   = $matcher->match('/show/100');
+//  dd($resultat);
 //  Renvoie un tableau avec le nom de la route matchant avec le param '/'
 //  Ici listRoute
 //  ex : $resultat = $matcher->match('/');
@@ -76,12 +134,12 @@ if (isset($_SERVER['PATH_INFO']))
     $pathInfo = $_SERVER['PATH_INFO'];
 
 try {
-    $resultat = $matcher->match($pathInfo);
+    $currentRoute = $matcher->match($pathInfo);
     //var_dump($resultat);    // ['_route => 'list]
     /* $page = le nom d'un fichier dans pages
     **       = NOM DES ROUTES !
     */
-    $page = $resultat['_route']; //'list'
+    $page = $currentRoute['_route']; //'list'
     require_once "pages/$page.php";
 } catch(ResourceNotFoundException $e) { // == the resource wasn't found
     require 'pages/404.php';
