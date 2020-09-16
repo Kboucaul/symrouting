@@ -28,25 +28,37 @@
  * 
  */
 
+use App\Controller\TaskController;
+use App\Controller\HelloController;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
-use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$listRoute      = new Route('/');
-$createRoute    = new Route('/create', [], [], [], 'localhost', ['http'], ['POST', 'GET']);
-//l'identifiant est de base a 100
-//['id'] => 100     <====> {id?100}
-//['id'] => '\d+'   <====> ['\d+']
-$showRoute      = new Route('/show/{id?100}', [], [
-    //Pour la route show on  veut un numerique
-    // 1 ou plus
-    'id' => '\d+'
-]);
+/*
+**  Le controller est chargé dans l'autoload, pas besoin de le require :
+**  Voir fichier composer.json etapres sa modif bien faire un composer
+**  autoload-dump
+*/
+
+//$controller = new HelloController();
+//On appelle la methode sayHello
+//$controller->sayHello();
+//$callable = [new HelloController, "sayHello"];
+//Revient a dire $controller->sayHello();
+//Magnifique!!
+
+//Ces deux pochaines lignes font la meme chose!
+/*
+    $callable();
+    call_user_func($callable);
+*/
+
+
 /*
 **  On donne un parametre name par defaut
 **  Ex : si on tappe /hello     => Hello Wrld
@@ -65,13 +77,45 @@ $showRoute      = new Route('/show/{id?100}', [], [
 **  On passe en 3 eme arg des requirments
 */
 $helloRoute     = new Route('/hello/{name}',
-                ['name' => 'World', 'toto' => 42],
+                //  Qaund on va taper /hello/Jog
+                //  On aura la route /hello/name avec name = jog
+                //  On aura par defaut name = World
+                //  On appellera le controller HelloController
+                //['name' => 'World', 'controller' => [new HelloController, "sayHello"]]
+                ['name' => 'World', 'controller' => 'App\Controller\HelloController@sayHello']
                 /*  Requirement ici on demande via une
                 **  regex que name est 3 characteres
                 **  Ce sont des contraintes de route
                 */
-                ['name' => '.{3}']
             );
+
+
+
+
+                    //callable : 1 arg => objet, 2em arg methode que l'n veut appeler
+$listRoute      = new Route('/', ['controller' => 'App\Controller\TaskController@index']);
+$createRoute    = new Route('/create',
+ ['controller' => 'App\Controller\TaskController@create'],
+ [],
+ [],
+ 'localhost',
+ ['http'],
+ ['POST','GET']);
+//l'identifiant est de base a 100
+//['id'] => 100     <====> {id?100}
+//['id'] => '\d+'   <====> ['\d+']
+/*
+**  Ici on passe une chaine et non plus iun objet pour eviter de saturer la memoire en
+**  créant systematiquement des instances d'objets dont on ne se servira pas.
+**  En effet on appelle une route, inutile de creer alors 4 instances.
+**  On va ensuite transformer cette chaine en callable
+*/
+$showRoute      = new Route('/show/{id?100}', ["controller" => 'App\Controller\TaskController@show'], [
+    //Pour la route show on  veut un numerique
+    // 1 ou plus
+    'id' => '\d+'
+]);
+
 /*
 **  Comparaison :
 **  /create         VS      /index.php?page=create
@@ -91,7 +135,7 @@ $collection->add('hello', $helloRoute);
 /*
 **  On crée un matcher
 */
-dump($_SERVER);
+//dump($_SERVER);
 /*
 **  Le requestContext recupere des infos sur la requete actuelle
 **  Normalmeent il prend une url de base (il peut se debrouiller seul)
@@ -135,14 +179,32 @@ if (isset($_SERVER['PATH_INFO']))
 
 try {
     $currentRoute = $matcher->match($pathInfo);
+    //  On voit bien que notre controller HelloController
+    //  fonctionne bien
+    //dd($currentRoute);
     //var_dump($resultat);    // ['_route => 'list]
     /* $page = le nom d'un fichier dans pages
     **       = NOM DES ROUTES !
     */
-    $page = $currentRoute['_route']; //'list'
-    require_once "pages/$page.php";
+    $controller = $currentRoute['controller'];
+    $currentRoute['generator'] = $generator;
+    //dump($currentRoute);
+    // 'App/Controller/TaskController@sayHello'
+    // Ici sayHello est la methode appelée
+    // et @ est notre separateur entre controller et s amethode
+    $className = substr($controller, 0, strpos($controller, '@'));
+    //dd($className) => "App/Controller/TaskController"
+    //Genial ici on a cree une instance avec une chaine de char.
+    $methode = substr($controller, strpos($controller, '@') + 1);
+    //dd($methode) ==> sayHello
+    $instance = new $className();
+    //dd(instance) ==> objet 
+
+    //revient a faire un
+    //$instance->$methode($currentRoute)
+    call_user_func([$instance, $methode], $currentRoute);
 } catch(ResourceNotFoundException $e) { // == the resource wasn't found
-    require 'pages/404.php';
+    require 'pages/404.html.php';
     return ;
 }
 
