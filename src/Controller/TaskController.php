@@ -2,77 +2,66 @@
 
 namespace App\Controller;
 
-use Exception;
+use LogicException;
+use Symfony\Component\Routing\Annotation\Route;
 
-class TaskController
+/**
+ * DECOUVRONS UN CONTROLLER :
+ * -----------
+ * Dans cette classe, j'ai extrait toute la logique qui se trouvait avant dans les fichiers d'affichages (les vues du dossier "pages")
+ * 
+ * Chaque route devient correspond désormais à une méthode de la classe.
+ * 
+ * ATTENTION, IMPORTANT : LES PARAMETRES DES ROUTES
+ * -----------
+ * Une des actions que l'on avait créé (l'action de voir les détails d'un article avec /show/{id}) nécessite d'avoir accès aux paramètres de la
+ * route. 
+ * 
+ * Dans le fichier index.php, on va instancier cette classe et appeler la méthode voulue en lui passant en paramètre les informations relatives
+ * à la route que le matcher nous a rendu.
+ * 
+ * Chaque méthode de nos controller peut donc recevoir ce tableau d'informations sur la route actuelle (et donc les paramètres)
+ */
+class TaskController extends Controller
 {
     /**
-     * Permet d elister la liste des taches
-     *
-     * @return void
+     * @Route("/", name="index")
      */
-    public function index(array $currentRoute)
+    public function index()
     {
         // On récupère les tâches
         $data = require_once 'data.php';
 
-        $generator = $currentRoute['generator'];
-        require __DIR__ . './../../pages/list.html.php';
+        require_once __DIR__ . '/../../pages/list.php';
     }
+
     /**
-     * Permet de montrer une tache en particulier
-     *
-     * @return void
+     * @Route("/show/{id}", name="show", requirements={"id": "\d+"})
      */
-    public function show(array $currentRoute)
+    public function show(array $routeParams)
     {
         // On appelle la liste des tâches
         $data = require_once "data.php";
 
-        /*
-        **  $Resultat etant définit dans index.php
-        **  Le matcher renvoie toujours un tableau
-        **  associatif.
-        **  On ne va plus chercher nos parametres en GET
-        */
-        $id = $currentRoute['id'];
-        //=============================CODE INITIAL==========================
-        // Par défaut, on imagine qu'aucun id n'a été précisé
-        //$id = null;
-
-        // Si un id est précisé en GET, on le prend
-        //if (isset($_GET['id'])) {
-        //    $id = $_GET['id'];
-        //}
+        // On récupère l'id (qui est un paramètre de la route)
+        $id = $routeParams['id'];
 
         // Si aucun id n'est passé ou que l'id n'existe pas dans la liste des tâches, on arrête tout !
         if (!$id || !array_key_exists($id, $data)) {
-            throw new Exception("La tâche demandée n'existe pas !");
+            throw new LogicException("La tâche demandée n'existe pas !");
         }
+
         // Si tout va bien, on récupère la tâche correspondante et on affiche
         $task = $data[$id];
-        $generator = $currentRoute['generator'];
 
-        require __DIR__ . './../../pages/show.html.php';
+        require_once __DIR__ . '/../../pages/show.php';
     }
 
     /**
-    * Permet d'ajouter une tache
-    *
-    * @return void
-    */
-    public function create(array $currentRoute)
+     * @Route("/create", name="create")
+     */
+    public function create()
     {
-        /**
-         * PAGE DE CREATION D'UNE TÂCHE :
-         * -------------
-         * Cette page peut être appelée de deux façons :
-         * - en GET : quand on tape simplement l'adresse /index.php?page=create dans le navigateur, c'est une requête en GET par défaut
-         * => Elle affiche simplement le formulaire HTML
-         * - en POST : quand on soumet le formulaire, le navigateur va rappeler /index.php?page=create mais cette fois ci en POST
-         * => On analyse le $_POST et on traite les données soumises
-         */
-
         // Si la requête arrive en POST, c'est qu'on a soumis le formulaire :
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Traitement à la con (enregistrement en base de données, redirection, envoi d'email, etc)...
@@ -81,8 +70,8 @@ class TaskController
             // Arrêt du script
             return;
         }
+
         // Sinon, si on est en GET, on affiche :
-        $generator = $currentRoute['generator'];
-        require __DIR__ . './../../pages/create.html.php';
+        require_once __DIR__ . '/../../pages/create.php';
     }
 }
